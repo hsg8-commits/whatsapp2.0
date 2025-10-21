@@ -5,16 +5,38 @@ const DB_VERSION = 1;
 class Database {
   constructor() {
     this.db = null;
+    this.isInitialized = false;
+  }
+
+  // Check if we're in browser environment
+  isBrowser() {
+    return typeof window !== 'undefined' && typeof window.indexedDB !== 'undefined';
   }
 
   // Initialize Database
   async init() {
+    // Check if already initialized
+    if (this.isInitialized && this.db) {
+      return this.db;
+    }
+
+    // Check if we're in browser environment
+    if (!this.isBrowser()) {
+      console.log('IndexedDB not available in this environment');
+      return null;
+    }
+
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-      request.onerror = () => reject(request.error);
+      request.onerror = () => {
+        console.error('IndexedDB error:', request.error);
+        reject(request.error);
+      };
       request.onsuccess = () => {
         this.db = request.result;
+        this.isInitialized = true;
+        console.log('IndexedDB initialized successfully');
         resolve(this.db);
       };
 
@@ -51,6 +73,11 @@ class Database {
 
   // User Methods
   async createUser(username, password, email = '') {
+    if (!this.db) {
+      await this.init();
+      if (!this.db) throw new Error('Database not initialized');
+    }
+    
     const transaction = this.db.transaction(['users'], 'readwrite');
     const store = transaction.objectStore('users');
     
@@ -71,6 +98,11 @@ class Database {
   }
 
   async getUserByUsername(username) {
+    if (!this.db) {
+      await this.init();
+      if (!this.db) return null;
+    }
+    
     const transaction = this.db.transaction(['users'], 'readonly');
     const store = transaction.objectStore('users');
     const index = store.index('username');
@@ -123,6 +155,11 @@ class Database {
 
   // Session Methods
   async setCurrentUser(user) {
+    if (!this.db) {
+      await this.init();
+      if (!this.db) throw new Error('Database not initialized');
+    }
+    
     const transaction = this.db.transaction(['currentUser'], 'readwrite');
     const store = transaction.objectStore('currentUser');
 
@@ -134,6 +171,11 @@ class Database {
   }
 
   async getCurrentUser() {
+    if (!this.db) {
+      await this.init();
+      if (!this.db) return null;
+    }
+    
     const transaction = this.db.transaction(['currentUser'], 'readonly');
     const store = transaction.objectStore('currentUser');
 
@@ -145,6 +187,11 @@ class Database {
   }
 
   async logout() {
+    if (!this.db) {
+      await this.init();
+      if (!this.db) return;
+    }
+    
     const transaction = this.db.transaction(['currentUser'], 'readwrite');
     const store = transaction.objectStore('currentUser');
 
