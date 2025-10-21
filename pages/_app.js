@@ -1,35 +1,43 @@
 import "../styles/globals.css";
-
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth, db } from "../firebase";
-import { useEffect } from "react";
-import { doc, setDoc, Timestamp } from "firebase/firestore";
-
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import authService from "../utils/auth";
 import Login from "./login";
 import Loading from "../components/Loading";
 
 function MyApp({ Component, pageProps }) {
-  const [user, loading] = useAuthState(auth);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    if (user) {
-      const document = doc(db, `users/${user.uid}`);
-      setDoc(
-        document,
-        {
-          email: user.email,
-          lastSeen: Timestamp.now(),
-          photoURL: user.photoURL,
-        },
-        { merge: true }
-      );
-    }
-  }, [user]);
+    const initAuth = async () => {
+      try {
+        await authService.init();
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+  }, []);
+
+  // Allow access to login and register pages without authentication
+  if (router.pathname === "/login" || router.pathname === "/register") {
+    return <Component {...pageProps} />;
+  }
 
   if (loading) return <Loading />;
-  if (!user) return <Login />;
+  if (!user) {
+    router.push("/login");
+    return <Loading />;
+  }
 
-  return <Component {...pageProps} />;
+  return <Component {...pageProps} user={user} />;
 }
 
 export default MyApp;

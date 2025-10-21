@@ -2,29 +2,35 @@ import Head from "next/head";
 import styled from "styled-components";
 import Sidebar from "../../components/Sidebar";
 import ChatScreen from "../../components/ChatScreen";
-import {
-  orderBy,
-  query,
-  getDocs,
-  collection,
-  doc,
-  getDoc,
-} from "firebase/firestore";
-import { auth, db } from "../../firebase";
-import { useAuthState } from "react-firebase-hooks/auth";
-import getRecipientEmail from "../../utils/getRecipientEmail";
+import { useRouter } from "next/router";
+import { useState, useEffect } from "react";
 
-function Chat({ chat, messages }) {
-  const [user] = useAuthState(auth);
+function Chat() {
+  const router = useRouter();
+  const { id } = router.query;
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   return (
     <Container>
       <Head>
-        <title>Chat with {getRecipientEmail(chat.users, user)}</title>
+        <title>محادثة - WhatsApp</title>
       </Head>
-      <Sidebar />
+      
+      {!isMobile && <Sidebar />}
+      
       <ChatContainer>
-        <ChatScreen chat={chat} messages={messages} />
+        <ChatScreen chatId={id} />
       </ChatContainer>
     </Container>
   );
@@ -32,51 +38,22 @@ function Chat({ chat, messages }) {
 
 export default Chat;
 
-export async function getServerSideProps(context) {
-  const docRef = doc(db, `chats/${context.query.id}`);
-  const colRef = collection(db, `chats/${context.query.id}/messages`);
-
-  // PREP the messages on the server
-  const messagesQuery = query(colRef, orderBy("timestamp", "asc"));
-  const messagesRes = await getDocs(messagesQuery);
-
-  const messages = messagesRes.docs
-    .map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }))
-    .map((msgs) => ({
-      ...msgs,
-      timestamp: msgs.timestamp.toDate().getTime(),
-    }));
-
-  // PREP the chats
-  const chatRes = await getDoc(docRef);
-  const chat = {
-    id: chatRes.id,
-    ...chatRes.data(),
-  };
-
-  return {
-    props: {
-      messages: JSON.stringify(messages),
-      chat: chat,
-    },
-  };
-}
-
 const Container = styled.div`
   display: flex;
+  height: 100vh;
+  overflow: hidden;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
 `;
 
 const ChatContainer = styled.div`
   flex: 1;
-  overflow: scroll;
+  overflow: hidden;
   height: 100vh;
 
-  ::-webkit-scrollbar {
-    display: none;
+  @media (max-width: 768px) {
+    width: 100%;
   }
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
 `;

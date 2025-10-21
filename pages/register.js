@@ -4,71 +4,104 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import authService from "../utils/auth";
 
-function Login() {
+function Register() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const whatsappLogo =
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/2042px-WhatsApp.svg.png";
 
-  const handleLogin = async (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
+
+    // Validation
+    if (password !== confirmPassword) {
+      setError("كلمة السر غير متطابقة");
+      return;
+    }
+
+    if (username.length < 3) {
+      setError("اسم المستخدم يجب أن يكون 3 أحرف على الأقل");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("كلمة السر يجب أن تكون 6 أحرف على الأقل");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const result = await authService.login(username, password);
-      
+      const result = await authService.register(username, password);
+
       if (result.success) {
         router.push("/");
       } else {
         setError(result.error);
       }
     } catch (err) {
-      setError("حدث خطأ أثناء تسجيل الدخول");
+      setError("حدث خطأ أثناء إنشاء الحساب");
     } finally {
       setLoading(false);
     }
   };
 
-  const goToRegister = () => {
-    router.push("/register");
+  const goToLogin = () => {
+    router.push("/login");
   };
 
   return (
     <Container>
       <Head>
-        <title>تسجيل الدخول - WhatsApp</title>
+        <title>إنشاء حساب جديد - WhatsApp</title>
       </Head>
 
-      <LoginContainer>
+      <RegisterContainer>
         <Logo src={whatsappLogo} alt="WhatsApp Logo" />
         <Title>WhatsApp Web</Title>
-        <Subtitle>تسجيل الدخول إلى حسابك</Subtitle>
+        <Subtitle>إنشاء حساب جديد</Subtitle>
 
-        <Form onSubmit={handleLogin}>
+        <Form onSubmit={handleRegister}>
           <InputGroup>
             <Label>اسم المستخدم</Label>
             <Input
               type="text"
-              placeholder="أدخل اسم المستخدم"
+              placeholder="أدخل اسم المستخدم (3 أحرف على الأقل)"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
               disabled={loading}
+              minLength={3}
             />
+            <Helper>سيستخدم هذا الاسم للبحث عنك والتواصل معك</Helper>
           </InputGroup>
 
           <InputGroup>
             <Label>كلمة السر</Label>
             <Input
               type="password"
-              placeholder="أدخل كلمة السر"
+              placeholder="أدخل كلمة السر (6 أحرف على الأقل)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading}
+              minLength={6}
+            />
+          </InputGroup>
+
+          <InputGroup>
+            <Label>تأكيد كلمة السر</Label>
+            <Input
+              type="password"
+              placeholder="أعد إدخال كلمة السر"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               required
               disabled={loading}
             />
@@ -76,22 +109,22 @@ function Login() {
 
           {error && <ErrorMessage>{error}</ErrorMessage>}
 
-          <LoginButton type="submit" disabled={loading}>
-            {loading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
-          </LoginButton>
+          <RegisterButton type="submit" disabled={loading}>
+            {loading ? "جاري إنشاء الحساب..." : "إنشاء حساب"}
+          </RegisterButton>
         </Form>
 
         <Divider>أو</Divider>
 
-        <RegisterLink onClick={goToRegister}>
-          ليس لديك حساب؟ <Strong>سجل الآن</Strong>
-        </RegisterLink>
-      </LoginContainer>
+        <LoginLink onClick={goToLogin}>
+          لديك حساب بالفعل؟ <Strong>سجل دخول</Strong>
+        </LoginLink>
+      </RegisterContainer>
     </Container>
   );
 }
 
-export default Login;
+export default Register;
 
 const Container = styled.div`
   display: flex;
@@ -106,7 +139,7 @@ const Container = styled.div`
   }
 `;
 
-const LoginContainer = styled.div`
+const RegisterContainer = styled.div`
   padding: 50px;
   display: flex;
   flex-direction: column;
@@ -207,6 +240,17 @@ const Input = styled.input`
   }
 `;
 
+const Helper = styled.small`
+  display: block;
+  margin-top: 5px;
+  color: #667781;
+  font-size: 12px;
+
+  @media (max-width: 768px) {
+    font-size: 11px;
+  }
+`;
+
 const ErrorMessage = styled.div`
   background-color: #fee;
   color: #c33;
@@ -222,7 +266,7 @@ const ErrorMessage = styled.div`
   }
 `;
 
-const LoginButton = styled.button`
+const RegisterButton = styled.button`
   width: 100%;
   padding: 14px;
   background-color: #25d366;
@@ -287,7 +331,7 @@ const Divider = styled.div`
   }
 `;
 
-const RegisterLink = styled.div`
+const LoginLink = styled.div`
   color: #667781;
   font-size: 14px;
   cursor: pointer;
