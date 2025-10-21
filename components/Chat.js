@@ -1,33 +1,45 @@
 import { Avatar } from "@mui/material";
-import { collection, query, where } from "firebase/firestore";
 import { useRouter } from "next/router";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { useCollection } from "react-firebase-hooks/firestore";
 import styled from "styled-components";
-import { auth, db } from "../firebase";
-import getRecipientEmail from "../utils/getRecipientEmail";
+import moment from "moment";
 
-function Chat({ id, users }) {
+function Chat({ id, otherUser, lastMessage, lastMessageTime }) {
   const router = useRouter();
-  const [user] = useAuthState(auth);
-  const recipientEmail = getRecipientEmail(users, user);
-  const [recipientSnapshot] = useCollection(
-    query(collection(db, "users"), where("email", "==", recipientEmail))
-  );
-  const recipientUser = recipientSnapshot?.docs?.[0]?.data();
 
   const enterChat = () => {
     router.push(`/chat/${id}`);
   };
 
+  const formatTime = (timestamp) => {
+    if (!timestamp) return "";
+    const messageTime = moment(timestamp);
+    const now = moment();
+    
+    if (now.diff(messageTime, 'days') === 0) {
+      return messageTime.format('HH:mm');
+    } else if (now.diff(messageTime, 'days') === 1) {
+      return 'أمس';
+    } else if (now.diff(messageTime, 'days') < 7) {
+      return messageTime.format('dddd');
+    } else {
+      return messageTime.format('DD/MM/YYYY');
+    }
+  };
+
   return (
     <Container onClick={enterChat}>
-      {recipientUser ? (
-        <UserAvatar src={recipient.photoURL} />
-      ) : (
-        <UserAvatar>{recipientEmail[0].toUpperCase()}</UserAvatar>
+      <UserAvatar src={otherUser?.photoURL} alt={otherUser?.username}>
+        {otherUser?.username?.[0]?.toUpperCase()}
+      </UserAvatar>
+      <ChatInfo>
+        <ChatName>{otherUser?.username || 'مستخدم'}</ChatName>
+        {lastMessage && (
+          <LastMessage>{lastMessage}</LastMessage>
+        )}
+      </ChatInfo>
+      {lastMessageTime && (
+        <TimeStamp>{formatTime(lastMessageTime)}</TimeStamp>
       )}
-      <p>{recipientEmail}</p>
     </Container>
   );
 }
@@ -40,13 +52,61 @@ const Container = styled.div`
   cursor: pointer;
   padding: 15px;
   word-break: break-word;
+  border-bottom: 1px solid #f0f2f5;
+  transition: background-color 0.2s;
 
   :hover {
-    background-color: #e9eaeb;
+    background-color: #f5f6f6;
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px 10px;
   }
 `;
 
 const UserAvatar = styled(Avatar)`
-  margin: 5px;
   margin-right: 15px;
+
+  @media (max-width: 768px) {
+    margin-right: 10px;
+  }
+`;
+
+const ChatInfo = styled.div`
+  flex: 1;
+  overflow: hidden;
+`;
+
+const ChatName = styled.div`
+  font-size: 16px;
+  font-weight: 500;
+  color: #000;
+  margin-bottom: 3px;
+
+  @media (max-width: 768px) {
+    font-size: 15px;
+  }
+`;
+
+const LastMessage = styled.div`
+  font-size: 14px;
+  color: #667781;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  @media (max-width: 768px) {
+    font-size: 13px;
+  }
+`;
+
+const TimeStamp = styled.div`
+  font-size: 12px;
+  color: #667781;
+  margin-left: 10px;
+  white-space: nowrap;
+
+  @media (max-width: 768px) {
+    font-size: 11px;
+  }
 `;
